@@ -28,7 +28,7 @@ jobs:
         run: az acr login --name omerdev2030
 
       - name: Build Docker image
-        run: docker build -t omerdev2030.azurecr.io/coderco-azure-project:${{ github.sha }} .
+        run: docker build -t omerdev2030.azurecr.io/coderco-azure-project:${{ github.sha }} ./app
 
       - name: Push Docker image to ACR
         run: docker push omerdev2030.azurecr.io/coderco-azure-project:${{ github.sha }}
