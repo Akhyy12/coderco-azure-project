@@ -3,4 +3,4 @@ WORKDIR /app
 COPY . .
 RUN pip install flask -r requirements.txt
 EXPOSE 3000
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:3000", "--workers", "1", "app:app"]

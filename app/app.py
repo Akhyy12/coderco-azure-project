@@ -1,8 +1,18 @@
+import os
+import logging
+logging.basicConfig(level=logging.INFO)
 import uuid
 from flask import Flask, request, jsonify, abort, render_template
+from UnleashClient import UnleashClient
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
+unleash = UnleashClient(
+    url=os.environ["UNLEASH_URL"],
+    app_name="flask-app",
+    api_key=os.environ["UNLEASH_API_TOKEN"],
+)
+unleash.initialize_client()
 # In-memory storage for tasks
 tasks = {}
 
@@ -19,6 +29,7 @@ def create_task():
     data = request.get_json()
     if not data or 'title' not in data:
         abort(400, description="Missing task title")
+
     task_id = str(uuid.uuid4())
     task = {
         'id': task_id,
@@ -26,6 +37,11 @@ def create_task():
         'description': data.get('description', ''),
         'completed': False
     }
+
+    # Feature flag: prioritet visas bara om flaggan är på
+    if unleash.is_enabled("show-task-priority"):
+        task['priority'] = data.get('priority', 'normal')
+
     tasks[task_id] = task
     return jsonify(task), 201
 
@@ -54,6 +70,6 @@ def delete_task(task_id):
         abort(404, description="Task not found")
     del tasks[task_id]
     return jsonify({'result': True})
-    
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000, debug=True)
+    app.run(host='0.0.0.0', port=3000, debug=False)
