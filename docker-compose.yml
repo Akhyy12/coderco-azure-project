@@ -1,0 +1,43 @@
+services:
+  # Unleash: själva appen för feature flags
+  unleash:
+    build: ./unleash
+    ports:
+      - "4242:4242"                          # dator:container
+    environment:
+      DATABASE_HOST: db                      # service-namnet nedan = adressen
+      DATABASE_NAME: unleash                 # måste matcha POSTGRES_DB
+      DATABASE_USERNAME: unleash_user        # måste matcha POSTGRES_USER
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}   # måste matcha POSTGRES_PASSWORD
+      DATABASE_SSL: "false"                  # ingen kryptering lokalt, "true" i Azure
+    depends_on:
+      db:
+        condition: service_healthy           # starta först när databasen är redo
+
+  flask:
+    build: ./app
+    ports:
+      - "3000:3000"
+    environment:
+      UNLEASH_URL: http://unleash:4242/api
+      UNLEASH_API_TOKEN: ${UNLEASH_API_TOKEN}
+    depends_on:
+      - unleash
+
+  # PostgreSQL: databasen där Unleash sparar flaggorna
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: unleash
+      POSTGRES_USER: unleash_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - unleash-db-data:/var/lib/postgresql/data   # datan överlever omstarter
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unleash_user -d unleash"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  unleash-db-data:
+  
