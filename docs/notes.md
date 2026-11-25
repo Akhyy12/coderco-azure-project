@@ -70,4 +70,14 @@
    - Lösning: `prevent_deletion_if_contains_resources = false` i infra/provider.tf
    - OK i dev (gruppen innehåller bara mina resurser), skulle behållas i produktion
 
-4. **Resurser
+4. **Resurser försvann direkt efter att de skapats ("Root object was present, but now absent")**
+   - Orsak: Azure raderade fortfarande en resursgrupp med samma namn i bakgrunden
+   - Följdfel: Azure och Terraform state blev osynkade ("already exists")
+   - Felsökning: `az group show` och `az postgres flexible-server show` för att se verkligt läge
+   - Lösning: nya namn (rg-unleash-app, psql-omer-unleash-ne, kv-omer-unleash-ne),
+     tömde state med `terraform state rm` och byggde om. 12 resurser skapades
+   - Lärdom: när Azure och state är osynkade är en ren omstart ofta snabbare än att lappa
+
+### Kostnad
+- Databasen kostar per timme. Vid kort paus: `az postgres flexible-server stop`
+  (bara lagring kostar, startar automatiskt efter 7 dagar). Vid längre paus: `terraform destroy`
