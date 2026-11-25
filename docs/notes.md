@@ -47,10 +47,27 @@
 - Referenser i stället för hårdkodade namn, så att Terraform skapar saker i rätt ordning
 
 ## Steg 10: Databas och Key Vault
-- PostgreSQL i privat subnät, Key Vault med RBAC, lösenord från random_password
-- Problem 1: RegionalAllocationFailed i Sweden Central (Azure hade slut på kapacitet)
-  - Lösning: bytte region till North Europe
-- Problem 2: resurser försvann direkt efter att de skapats ("Root object was present, but now absent")
-  - Orsak: Azure raderade fortfarande en resursgrupp med samma namn i bakgrunden
-  - Lösning: nytt namn på resursgruppen, tömde Terraform state och byggde om
-- Lärdom: när Azure och state blir osynkade är en ren omstart ofta snabbare än att lappa
+
+### Vad jag byggde
+- PostgreSQL Flexible Server (v16, B1ms) i det privata subnätet snet-db, ingen publik åtkomst
+- Privat DNS-zon kopplad till VNet:et, så att apparna hittar databasen med namn i stället för IP
+- Databaslösenordet genereras av Terraform (random_password), ingen människa skriver det
+- Key Vault med RBAC (roller i stället för access policies). Lösenordet sparas som hemligheten db-password
+- Mig själv som "Key Vault Secrets Officer", så att Terraform får skriva hemligheten
+
+### Problem jag löste
+1. **Varning: enable_rbac_authorization deprecated**
+   - Upptäckte med `terraform validate` (VS Code visade bara rött)
+   - Lösning: bytte till det nya namnet `rbac_authorization_enabled`
+   - Lärdom: lita på `terraform validate`, inte på editorns färger
+
+2. **RegionalAllocationFailed**
+   - Azure hade slut på kapacitet för B1ms i Sweden Central
+   - Lösning: bytte region till North Europe, en enda rad tack vare referenser
+
+3. **Resursgruppen gick inte att radera ("still contains Resources")**
+   - En DNS-zon låg kvar efter databasen som misslyckades
+   - Lösning: `prevent_deletion_if_contains_resources = false` i infra/provider.tf
+   - OK i dev (gruppen innehåller bara mina resurser), skulle behållas i produktion
+
+4. **Resurser
