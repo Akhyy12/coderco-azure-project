@@ -81,3 +81,24 @@
 ### Kostnad
 - Databasen kostar per timme. Vid kort paus: `az postgres flexible-server stop`
   (bara lagring kostar, startar automatiskt efter 7 dagar). Vid längre paus: `terraform destroy`
+
+
+## Steg 11: ACR och images
+- Ny ACR (acrunleashdev) skapad med Terraform, admin_enabled = false (inga lösenord)
+- Byggde och pushade unleash:v1 och flask:v1 med --platform linux/amd64
+- Problem: "path not found", stod i terraform/infra i stället för repots rot
+
+## Steg 12: Unleash i Azure Container Apps
+- Container App med image från ACR, hämtad med Managed Identity (AcrPull)
+- Hemligheter hämtas från Key Vault med Managed Identity (Key Vault Secrets User), least privilege
+- DATABASE_SSL = true (Azure kräver krypterad anslutning)
+- Inget standardlösenord: UNLEASH_DEFAULT_ADMIN_PASSWORD genereras av Terraform
+- API-nyckeln för Flask skapas automatiskt med INIT_BACKEND_API_TOKENS
+- Liveness och readiness probes mot /health
+- Resultat: {"health":"GOOD"} live över HTTPS
+
+
+- Problem: UNLEASH_DEFAULT_ADMIN_PASSWORD fick ingen effekt, admin skapades med unleash4all
+- Åtgärd: bytte admin-lösenordet direkt i Unleash UI (appen är publik på internet)
+- Att undersöka: varför variabeln inte användes
+- Lärdom: kontrollera alltid att standardlösenord faktiskt är bytta, lita inte bara på konfigurationen
